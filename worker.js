@@ -68,6 +68,14 @@ parentPort.on('message', function (message) {
     shareBuffer(message.id, true, message.pointer, message.length)
     return
   }
+
+  if (message.type === 'exports') {
+    parentPort.postMessage({
+      type: 'exports',
+      id: message.id,
+      result: w.exports
+    })
+  }
 })
 
 function shareBuffer (id, writing, ptr, len) {

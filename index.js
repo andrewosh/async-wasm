@@ -53,6 +53,12 @@ module.exports = class AsyncWasm extends EventEmitter {
         return
       }
 
+      if (m.type === 'exports') {
+        const cb = this._pull(m.id)
+        cb.callback(null, m.result)
+        return
+      }
+
       if (m.type === 'syscall') {
         const fn = syscalls[m.ns][m.method]
 
@@ -168,6 +174,17 @@ module.exports = class AsyncWasm extends EventEmitter {
       id,
       method,
       args
+    })
+  }
+
+  exports (cb) {
+    const id = this._callbacks.length
+    this._callbacks.push({
+      callback: cb
+    })
+    this._worker.postMessage({
+      type: 'exports',
+      id
     })
   }
 }
