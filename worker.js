@@ -17,12 +17,16 @@ for (const ns of Object.keys(syscalls)) {
 
       let head = 0
 
+
       while (true) {
         Atomics.wait(s, head, 0)
 
         const type = s[head++]
 
-        if (type === 1) return s[head]
+        if (type === 1) {
+          s.fill(0)
+          return s[head]
+        }
 
         const writing = type === 3 // 2 is reading
         const id = s[head++]
@@ -46,8 +50,6 @@ try {
   })
 }
 
-let mem = w && w.exports.memory && new Uint8Array(w.exports.memory.buffer)
-
 parentPort.on('message', function (message) {
   if (message.type === 'call') {
     const result = w.exports[message.method](...message.args)
@@ -70,15 +72,21 @@ parentPort.on('message', function (message) {
   }
 
   if (message.type === 'exports') {
+    const exportNames = Object.getOwnPropertyNames(w.exports)
+    const exports = {}
+    for (const name of exportNames) {
+      exports[name] = typeof w.exports[name]
+    }
     parentPort.postMessage({
       type: 'exports',
       id: message.id,
-      result: w.exports
+      result: exports
     })
   }
 })
 
 function shareBuffer (id, writing, ptr, len) {
+  let mem = w && w.exports.memory && new Uint8Array(w.exports.memory.buffer)
   const buf = new SharedArrayBuffer(len + 4)
   const lck = new Int32Array(buf, 0, 1)
   const b = new Uint8Array(buf, 4, len)
@@ -87,11 +95,12 @@ function shareBuffer (id, writing, ptr, len) {
     b.set(mem.subarray(ptr, ptr + len))
   }
 
-  parentPort.postMessage({
+  const msg = {
     type: 'buffer',
     id,
     buffer: buf
-  })
+  }
+  parentPort.postMessage(msg)
 
   Atomics.wait(lck, 0, 0)
 
