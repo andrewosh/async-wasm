@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { workerData, parentPort } = require('worker_threads')
 const { shared, wasm, syscalls } = workerData
 const imports = {}
@@ -17,15 +18,15 @@ for (const ns of Object.keys(syscalls)) {
 
       let head = 0
 
-
       while (true) {
         Atomics.wait(s, head, 0)
 
         const type = s[head++]
 
         if (type === 1) {
+          let result = s[head]
           s.fill(0)
-          return s[head]
+          return result
         }
 
         const writing = type === 3 // 2 is reading
